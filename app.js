@@ -1,841 +1,1691 @@
 const CONFIG = {
   santaMarta: { lat: 11.2408, lon: -74.2110 },
+
   weather: 'https://api.open-meteo.com/v1/forecast',
+
   ideam: {
     dailyFlow: 'jxnq-r3i9',
     hourlyFlow: '79gx-f3v5',
     stationCatalog: 'hp9r-jxuu',
   },
+
   rivers: {
-    manzanares: { name:'Río Manzanares', basin:'Manzanares', lat:11.2063, lon:-74.0989, responseMin:3, responseMax:6, color:'#48d7cf', stationHints:['MANZANARES','BOCAT STA MARTA','AUTO MANZANARES','SAN P. ALEJANDRINO'] },
-    gaira: { name:'Río Gaira', basin:'Gaira', lat:11.1403, lon:-74.1197, responseMin:4, responseMax:8, color:'#5db5ff', stationHints:['MINCA','GAIRA'] },
-    guachaca: { name:'Río Guachaca', basin:'Guachaca', lat:11.2475, lon:-73.8392, responseMin:3, responseMax:7, color:'#f7c769', stationHints:['GUACHACA'] },
+    manzanares: {
+      name: 'Río Manzanares',
+      basin: 'Manzanares',
+      lat: 11.2063,
+      lon: -74.0989,
+      responseMin: 3,
+      responseMax: 6,
+      color: '#48d7cf',
+      stationHints: [
+        'MANZANARES',
+        'BOCAT STA MARTA',
+        'AUTO MANZANARES',
+        'SAN P. ALEJANDRINO'
+      ]
+    },
+
+    gaira: {
+      name: 'Río Gaira',
+      basin: 'Gaira',
+      lat: 11.1403,
+      lon: -74.1197,
+      responseMin: 4,
+      responseMax: 8,
+      color: '#5db5ff',
+      stationHints: [
+        'MINCA',
+        'GAIRA'
+      ]
+    },
+
+    guachaca: {
+      name: 'Río Guachaca',
+      basin: 'Guachaca',
+      lat: 11.2475,
+      lon: -73.8392,
+      responseMin: 3,
+      responseMax: 7,
+      color: '#f7c769',
+      stationHints: [
+        'GUACHACA'
+      ]
+    }
   },
+
   demo: {
-    manzanares: { flow: 8.7, delta: 8.4, rainfall24: 19.4, forecast24: 22.8 },
-    gaira: { flow: 5.4, delta: -2.3, rainfall24: 14.6, forecast24: 17.1 },
-    guachaca: { flow: 11.2, delta: 15.8, rainfall24: 28.6, forecast24: 34.7 },
+    manzanares: {
+      flow: 8.7,
+      delta: 8.4,
+      rainfall24: 19.4,
+      forecast24: 22.8
+    },
+
+    gaira: {
+      flow: 5.4,
+      delta: -2.3,
+      rainfall24: 14.6,
+      forecast24: 17.1
+    },
+
+    guachaca: {
+      flow: 11.2,
+      delta: 15.8,
+      rainfall24: 28.6,
+      forecast24: 34.7
+    }
   }
 };
 
+
 const $ = s => document.querySelector(s);
-let map, hydroChart;
+
+let map;
+let hydroChart;
+
 let mapLayers = {};
 let weatherState = null;
 let liveHydro = {};
 
-function fmt(n, d=1){ if(n===null || n===undefined || Number.isNaN(Number(n))) return '—'; return Number(n).toLocaleString('es-CO',{maximumFractionDigits:d,minimumFractionDigits:d}); }
-function fmt0(n){ if(n===null || n===undefined) return '—'; return Number(n).toLocaleString('es-CO',{maximumFractionDigits:0}); }
 
-function showPage(page){
-  document.querySelectorAll('.side-link').forEach(b=>b.classList.toggle('active', b.dataset.target===page));
 
-  if(page!=='metodologia'){
-    document.querySelectorAll('.page-section').forEach(p=>p.classList.remove('active'));
-    document.getElementById('inicio').classList.add('active');
+/* =========================================================
+   UTILIDADES
+========================================================= */
+
+function fmt(n, d = 1) {
+
+  if (
+    n === null ||
+    n === undefined ||
+    Number.isNaN(Number(n))
+  ) {
+    return '—';
   }
 
-  if(page==='inicio'){
-    window.scrollTo({top:0,behavior:'smooth'});
+  return Number(n).toLocaleString(
+    'es-CO',
+    {
+      maximumFractionDigits: d,
+      minimumFractionDigits: d
+    }
+  );
+}
+
+
+function fmt0(n) {
+
+  if (
+    n === null ||
+    n === undefined
+  ) {
+    return '—';
+  }
+
+  return Number(n).toLocaleString(
+    'es-CO',
+    {
+      maximumFractionDigits: 0
+    }
+  );
+}
+
+
+
+/* =========================================================
+   NAVEGACIÓN
+========================================================= */
+
+function showPage(page) {
+
+  document
+    .querySelectorAll('.side-link')
+    .forEach(
+      b =>
+        b.classList.toggle(
+          'active',
+          b.dataset.target === page
+        )
+    );
+
+
+  if (page !== 'metodologia') {
+
+    document
+      .querySelectorAll('.page-section')
+      .forEach(
+        p =>
+          p.classList.remove('active')
+      );
+
+    document
+      .getElementById('inicio')
+      .classList.add('active');
+  }
+
+
+  if (page === 'inicio') {
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+
     return;
   }
 
-  const targets={
-    mapa:'#mapa',
-    pronostico:'#pronostico',
-    historico:'#historico',
-    metodologia:'#metodologia-page'
+
+  const targets = {
+    mapa: '#mapa',
+    pronostico: '#pronostico',
+    historico: '#historico',
+    metodologia: '#metodologia-page'
   };
 
-  if(page==='mapa' || page==='pronostico' || page==='historico'){
-    const el=document.querySelector(targets[page]);
-    if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+
+  if (
+    page === 'mapa' ||
+    page === 'pronostico' ||
+    page === 'historico'
+  ) {
+
+    const el =
+      document.querySelector(
+        targets[page]
+      );
+
+    if (el) {
+
+      el.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
   }
 
-  if(page==='metodologia') renderMethodology();
+
+  if (
+    page === 'metodologia'
+  ) {
+
+    renderMethodology();
+  }
 }
 
-document.querySelectorAll('.side-link').forEach(b=>
-  b.addEventListener('click',()=>showPage(b.dataset.target))
-);
 
-function initMap(){
-  map=L.map('map',{
-    zoomControl:true,
-    scrollWheelZoom:true
-  }).setView([11.205,-74.13],10.9);
+document
+  .querySelectorAll('.side-link')
+  .forEach(
+    b =>
+      b.addEventListener(
+        'click',
+        () =>
+          showPage(
+            b.dataset.target
+          )
+      )
+  );
 
-  L.tileLayer(
-    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    {
-      maxZoom:19,
-      attribution:'© OpenStreetMap contributors'
-    }
-  ).addTo(map);
 
-  const riverLines={
-    manzanares:[
-      [11.294,-74.255],
-      [11.275,-74.241],
-      [11.255,-74.226],
-      [11.235,-74.214],
-      [11.214,-74.194],
-      [11.194,-74.184]
+
+/* =========================================================
+   MAPA
+========================================================= */
+
+function initMap() {
+
+  map =
+    L
+      .map(
+        'map',
+        {
+          zoomControl: true,
+          scrollWheelZoom: true
+        }
+      )
+      .setView(
+        [11.205, -74.13],
+        10.9
+      );
+
+
+  L
+    .tileLayer(
+      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        maxZoom: 19,
+        attribution:
+          '© OpenStreetMap contributors'
+      }
+    )
+    .addTo(map);
+
+
+
+  const riverLines = {
+
+    manzanares: [
+      [11.294, -74.255],
+      [11.275, -74.241],
+      [11.255, -74.226],
+      [11.235, -74.214],
+      [11.214, -74.194],
+      [11.194, -74.184]
     ],
-    gaira:[
-      [11.185,-74.180],
-      [11.169,-74.192],
-      [11.156,-74.202],
-      [11.142,-74.209],
-      [11.126,-74.216]
+
+    gaira: [
+      [11.185, -74.180],
+      [11.169, -74.192],
+      [11.156, -74.202],
+      [11.142, -74.209],
+      [11.126, -74.216]
     ],
-    guachaca:[
-      [11.300,-73.790],
-      [11.281,-73.807],
-      [11.263,-73.827],
-      [11.2475,-73.8392],
-      [11.227,-73.850],
-      [11.207,-73.863]
+
+    guachaca: [
+      [11.300, -73.790],
+      [11.281, -73.807],
+      [11.263, -73.827],
+      [11.2475, -73.8392],
+      [11.227, -73.850],
+      [11.207, -73.863]
     ]
   };
 
-  Object.entries(riverLines).forEach(([key,coords])=>{
-    const r=CONFIG.rivers[key];
 
-    L.polyline(
-      coords,
-      {
-        color:r.color,
-        weight:5,
-        opacity:.85,
-        lineCap:'round'
-      }
-    )
-    .bindTooltip(r.name,{sticky:true})
-    .addTo(map);
 
-    L.polyline(
-      coords,
-      {
-        color:'#ffffff',
-        weight:1,
-        opacity:.28
-      }
-    ).addTo(map);
-  });
+  Object.entries(
+    riverLines
+  ).forEach(
+    ([key, coords]) => {
 
-  mapLayers.stations=L.layerGroup().addTo(map);
+      const r =
+        CONFIG.rivers[key];
 
-  Object.entries(CONFIG.rivers).forEach(([key,r])=>{
-    const marker=L.circleMarker(
-      [r.lat,r.lon],
-      {
-        radius:7,
-        color:'#061522',
-        weight:2,
-        fillColor:r.color,
-        fillOpacity:1
-      }
-    );
 
-    marker.bindPopup(
-      `<b>${r.name}</b>
-      <br>
-      <span style="color:#86a7b8">Punto representativo de cuenca</span>
-      <br><br>
-      La estación real se cargará desde el catálogo del IDEAM.`
-    );
+      L
+        .polyline(
+          coords,
+          {
+            color: r.color,
+            weight: 5,
+            opacity: 0.85,
+            lineCap: 'round'
+          }
+        )
+        .bindTooltip(
+          r.name,
+          {
+            sticky: true
+          }
+        )
+        .addTo(map);
 
-    marker.addTo(mapLayers.stations);
-  });
 
-  map.on('mousemove', e=>{
-    // Mantener el mapa sobrio; la coordenada se muestra solo al hacer clic.
-  });
-
-  map.on('click', e=>{
-    L.popup({closeButton:true})
-      .setLatLng(e.latlng)
-      .setContent(
-        `<b>Consulta espacial</b>
-        <br>
-        Lat ${e.latlng.lat.toFixed(5)}
-        · Lon ${e.latlng.lng.toFixed(5)}`
-      )
-      .openOn(map);
-  });
-
-  $('#focusSM').addEventListener(
-    'click',
-    ()=>map.setView([11.2408,-74.2110],12)
+      L
+        .polyline(
+          coords,
+          {
+            color: '#ffffff',
+            weight: 1,
+            opacity: 0.28
+          }
+        )
+        .addTo(map);
+    }
   );
 
-  $('#toggleRainLayer').addEventListener(
-    'click',
-    ()=>toggleRainLayer()
+
+
+  mapLayers.stations =
+    L
+      .layerGroup()
+      .addTo(map);
+
+
+
+  Object.entries(
+    CONFIG.rivers
+  ).forEach(
+    ([key, r]) => {
+
+      const marker =
+        L.circleMarker(
+          [r.lat, r.lon],
+          {
+            radius: 7,
+            color: '#061522',
+            weight: 2,
+            fillColor: r.color,
+            fillOpacity: 1
+          }
+        );
+
+
+      marker.bindPopup(
+        `
+          <b>${r.name}</b>
+          <br>
+          <span style="color:#86a7b8">
+            Punto representativo de cuenca
+          </span>
+          <br><br>
+          La estación real se cargará desde el catálogo del IDEAM.
+        `
+      );
+
+
+      marker.addTo(
+        mapLayers.stations
+      );
+    }
   );
+
+
+
+  map.on(
+    'mousemove',
+    e => {
+
+      // El mapa mantiene una interacción
+      // visual limpia.
+    }
+  );
+
+
+
+  map.on(
+    'click',
+    e => {
+
+      L
+        .popup({
+          closeButton: true
+        })
+        .setLatLng(
+          e.latlng
+        )
+        .setContent(
+          `
+            <b>Consulta espacial</b>
+            <br>
+            Lat ${e.latlng.lat.toFixed(5)}
+            · Lon ${e.latlng.lng.toFixed(5)}
+          `
+        )
+        .openOn(map);
+    }
+  );
+
+
+
+  $('#focusSM')
+    .addEventListener(
+      'click',
+      () =>
+        map.setView(
+          [11.2408, -74.2110],
+          12
+        )
+    );
+
+
+  $('#toggleRainLayer')
+    .addEventListener(
+      'click',
+      () => toggleRainLayer()
+    );
 }
 
-function toggleRainLayer(){
-  if(!mapLayers.rain){
-    mapLayers.rain=L.layerGroup();
+
+
+/* =========================================================
+   CAPA DE LLUVIA
+========================================================= */
+
+function toggleRainLayer() {
+
+  if (!mapLayers.rain) {
+
+    mapLayers.rain =
+      L.layerGroup();
+
 
     [
-      [11.24,-74.21,'Santa Marta'],
-      [11.20,-74.18,'Piedemonte'],
-      [11.14,-74.12,'Minca'],
-      [11.25,-73.84,'Guachaca']
-    ].forEach((p,i)=>{
+      [11.24, -74.21, 'Santa Marta'],
+      [11.20, -74.18, 'Piedemonte'],
+      [11.14, -74.12, 'Minca'],
+      [11.25, -73.84, 'Guachaca']
+    ]
+      .forEach(
+        (p, i) => {
 
-      const rain=[
-        weatherState?.last24||0,
-        weatherState?.last24||0,
-        weatherState?.last24*1.35||0,
-        weatherState?.last24*1.6||0
-      ][i];
+          const rain =
+            [
+              weatherState?.last24 || 0,
+              weatherState?.last24 || 0,
+              weatherState?.last24 * 1.35 || 0,
+              weatherState?.last24 * 1.6 || 0
+            ][i];
 
-      L.circleMarker(
-        [p[0],p[1]],
-        {
-          radius:10+Math.min(20,rain),
-          color:'#f7c769',
-          fillColor:'#f7c769',
-          fillOpacity:.12,
-          weight:1
+
+          L
+            .circleMarker(
+              [p[0], p[1]],
+              {
+                radius:
+                  10 +
+                  Math.min(
+                    20,
+                    rain
+                  ),
+                color: '#f7c769',
+                fillColor: '#f7c769',
+                fillOpacity: 0.12,
+                weight: 1
+              }
+            )
+            .bindTooltip(
+              `${p[2]} · lluvia aprox. ${fmt(rain)} mm`
+            )
+            .addTo(
+              mapLayers.rain
+            );
         }
-      )
-      .bindTooltip(
-        `${p[2]} · lluvia aprox. ${fmt(rain)} mm`
-      )
-      .addTo(mapLayers.rain);
-    });
+      );
   }
 
-  if(map.hasLayer(mapLayers.rain))
-    map.removeLayer(mapLayers.rain);
-  else
-    mapLayers.rain.addTo(map);
+
+  if (
+    map.hasLayer(
+      mapLayers.rain
+    )
+  ) {
+
+    map.removeLayer(
+      mapLayers.rain
+    );
+
+  } else {
+
+    mapLayers.rain.addTo(
+      map
+    );
+  }
 }
 
-async function fetchWeather(){
-  const params=new URLSearchParams({
-    latitude:CONFIG.santaMarta.lat,
-    longitude:CONFIG.santaMarta.lon,
-    timezone:'auto',
-    past_days:'2',
-    forecast_days:'3',
-    current:'temperature_2m,precipitation,rain,cloud_cover,wind_speed_10m',
-    hourly:'precipitation,rain,temperature_2m,precipitation_probability'
-  });
 
-  const res=await fetch(`${CONFIG.weather}?${params}`);
 
-  if(!res.ok)
-    throw new Error('No se pudo consultar el pronóstico meteorológico');
+/* =========================================================
+   SNAPSHOT LOCAL
+========================================================= */
 
-  const data=await res.json();
+async function fetchLocalSnapshot() {
 
-  const times=data.hourly?.time||[];
-  const precip=data.hourly?.precipitation||[];
-  const prob=data.hourly?.precipitation_probability||[];
+  const res =
+    await fetch(
+      `data/latest.json?ts=${Date.now()}`,
+      {
+        cache: 'no-store'
+      }
+    );
 
-  const now=Date.now();
-  const past24=[];
-  const future24=[];
 
-  times.forEach((t,i)=>{
-    const ms=new Date(t).getTime();
+  if (!res.ok) {
 
-    if(ms<=now && ms>now-24*3600e3)
-      past24.push(precip[i]||0);
+    throw new Error(
+      `Snapshot ${res.status}`
+    );
+  }
 
-    if(ms>now && ms<=now+24*3600e3)
-      future24.push(precip[i]||0);
-  });
 
-  weatherState={
+  const snapshot =
+    await res.json();
+
+
+  if (
+    snapshot.hydrology
+  ) {
+
+    liveHydro =
+      snapshot.hydrology;
+  }
+
+
+  if (
+    snapshot.forecast?.hourly
+  ) {
+
+    weatherState = {
+
+      ...(weatherState || {}),
+
+      last24:
+        snapshot
+          .rainfall
+          ?.santa_marta
+          ?.last24_mm
+        ?? null,
+
+      future24:
+        snapshot
+          .forecast
+          ?.next24_mm
+        ?? null,
+
+      times:
+        snapshot
+          .forecast
+          .hourly
+          .time
+        || [],
+
+      precip:
+        snapshot
+          .forecast
+          .hourly
+          .precipitation
+        || [],
+
+      prob:
+        snapshot
+          .forecast
+          .hourly
+          .probability
+        || []
+    };
+  }
+
+
+  return snapshot;
+}
+
+
+
+/* =========================================================
+   OPEN-METEO
+========================================================= */
+
+async function fetchWeather() {
+
+  const params =
+    new URLSearchParams({
+
+      latitude:
+        CONFIG.santaMarta.lat,
+
+      longitude:
+        CONFIG.santaMarta.lon,
+
+      timezone:
+        'auto',
+
+      past_days:
+        '2',
+
+      forecast_days:
+        '3',
+
+      current:
+        'temperature_2m,precipitation,rain,cloud_cover,wind_speed_10m',
+
+      hourly:
+        'precipitation,rain,temperature_2m,precipitation_probability'
+    });
+
+
+  const res =
+    await fetch(
+      `${CONFIG.weather}?${params}`
+    );
+
+
+  if (!res.ok) {
+
+    throw new Error(
+      'No se pudo consultar el pronóstico meteorológico'
+    );
+  }
+
+
+  const data =
+    await res.json();
+
+
+  const times =
+    data.hourly?.time || [];
+
+  const precip =
+    data.hourly?.precipitation || [];
+
+  const prob =
+    data.hourly?.precipitation_probability || [];
+
+
+  const now =
+    Date.now();
+
+
+  const past24 = [];
+  const future24 = [];
+
+
+  times.forEach(
+    (t, i) => {
+
+      const ms =
+        new Date(t).getTime();
+
+
+      if (
+        ms <= now &&
+        ms >
+          now -
+          24 * 3600e3
+      ) {
+
+        past24.push(
+          precip[i] || 0
+        );
+      }
+
+
+      if (
+        ms > now &&
+        ms <=
+          now +
+          24 * 3600e3
+      ) {
+
+        future24.push(
+          precip[i] || 0
+        );
+      }
+    }
+  );
+
+
+  weatherState = {
+
     data,
-    last24:past24.reduce((a,b)=>a+b,0),
-    future24:future24.reduce((a,b)=>a+b,0),
+
+    last24:
+      past24.reduce(
+        (a, b) => a + b,
+        0
+      ),
+
+    future24:
+      future24.reduce(
+        (a, b) => a + b,
+        0
+      ),
+
     times,
+
     precip,
+
     prob
   };
+
 
   return weatherState;
 }
 
-function findKey(obj, patterns){
-  const keys=Object.keys(obj||{});
+
+
+/* =========================================================
+   FUNCIONES PARA IDEAM
+========================================================= */
+
+function findKey(
+  obj,
+  patterns
+) {
+
+  const keys =
+    Object.keys(
+      obj || {}
+    );
+
 
   return keys.find(
-    k=>patterns.some(
-      p=>k.toLowerCase().includes(p)
-    )
+    k =>
+      patterns.some(
+        p =>
+          k
+            .toLowerCase()
+            .includes(p)
+      )
   );
 }
 
-function rowDate(row){
-  const key=findKey(
-    row,
-    [
-      'fecha',
-      'date',
-      'datetime',
-      'fecha_hora',
-      'timestamp',
-      'tiempo'
-    ]
-  );
 
-  const value=key
-    ? row[key]
-    : Object.values(row).find(
-        v=>typeof v==='string' && /20\d\d[-/]/.test(v)
-      );
+function rowDate(row) {
 
-  const d=value?new Date(value):null;
+  const key =
+    findKey(
+      row,
+      [
+        'fecha',
+        'date',
+        'datetime',
+        'fecha_hora',
+        'timestamp',
+        'tiempo'
+      ]
+    );
 
-  return d && !Number.isNaN(d.getTime())
+
+  const value =
+    key
+      ? row[key]
+      : Object
+          .values(row)
+          .find(
+            v =>
+              typeof v === 'string' &&
+              /20\d\d[-/]/.test(v)
+          );
+
+
+  const d =
+    value
+      ? new Date(value)
+      : null;
+
+
+  return (
+    d &&
+    !Number.isNaN(
+      d.getTime()
+    )
+  )
     ? d
     : null;
 }
 
-function rowStation(row){
-  const keys=Object.keys(row);
 
-  const candidates=keys.filter(
-    k=>/(estacion|station|nombre|corriente|rio|codigo)/i.test(k)
-  );
+function rowStation(row) {
+
+  const keys =
+    Object.keys(row);
+
+
+  const candidates =
+    keys.filter(
+      k =>
+        /(
+          estacion|
+          station|
+          nombre|
+          corriente|
+          rio|
+          codigo
+        )/i.test(k)
+    );
+
 
   return candidates
-    .map(k=>String(row[k]??''))
+    .map(
+      k =>
+        String(
+          row[k] ?? ''
+        )
+    )
     .join(' | ')
     .toUpperCase();
 }
 
-function rowFlow(row){
-  const key=findKey(
-    row,
-    [
-      'caudal',
-      'q_media',
-      'q_'
-    ]
-  );
 
-  if(key!==undefined){
-    const n=Number(
-      String(row[key]).replace(',','.')
+function rowFlow(row) {
+
+  const key =
+    findKey(
+      row,
+      [
+        'caudal',
+        'q_media',
+        'q_'
+      ]
     );
 
-    if(Number.isFinite(n))
+
+  if (
+    key !== undefined
+  ) {
+
+    const n =
+      Number(
+        String(
+          row[key]
+        )
+          .replace(',', '.')
+      );
+
+
+    if (
+      Number.isFinite(n)
+    ) {
+
       return n;
+    }
   }
 
-  const vals=Object.entries(row)
-    .filter(
-      ([k,v])=>
-        typeof v==='number'
-        &&
-        /q|caudal|flow/i.test(k)
-    );
+
+  const vals =
+    Object
+      .entries(row)
+      .filter(
+        ([k, v]) =>
+          typeof v === 'number' &&
+          /q|caudal|flow/i.test(k)
+      );
+
 
   return vals.length
     ? Number(vals[0][1])
     : null;
 }
 
-async function fetchSocrataSearch(datasetId, query){
-  const url=
+
+async function fetchSocrataSearch(
+  datasetId,
+  query
+) {
+
+  const url =
     `https://www.datos.gov.co/resource/${datasetId}.json?$q=${encodeURIComponent(query)}&$limit=250`;
 
-  const res=await fetch(
-    url,
-    {
-      headers:{
-        Accept:'application/json'
-      }
-    }
-  );
 
-  if(!res.ok)
-    throw new Error(`Socrata ${res.status}`);
+  const res =
+    await fetch(
+      url,
+      {
+        headers: {
+          Accept:
+            'application/json'
+        }
+      }
+    );
+
+
+  if (!res.ok) {
+
+    throw new Error(
+      `Socrata ${res.status}`
+    );
+  }
+
 
   return res.json();
 }
 
-async function fetchHydrology(){
-  const result={};
 
-  for(
-    const [key,r]
-    of Object.entries(CONFIG.rivers)
-  ){
-    let rows=[];
 
-    try{
-      for(
-        const hint of r.stationHints.slice(0,2)
-      ){
-        const candidate=
+async function fetchHydrology() {
+
+  const result = {};
+
+
+  for (
+    const [key, r]
+    of Object.entries(
+      CONFIG.rivers
+    )
+  ) {
+
+    let rows = [];
+
+
+    try {
+
+      for (
+        const hint
+        of r.stationHints.slice(0, 2)
+      ) {
+
+        const candidate =
           await fetchSocrataSearch(
             CONFIG.ideam.hourlyFlow,
             hint
           );
 
-        rows=rows.concat(candidate);
+
+        rows =
+          rows.concat(
+            candidate
+          );
       }
 
-      if(!rows.length){
-        for(
-          const hint of r.stationHints.slice(0,2)
-        ){
-          rows=rows.concat(
-            await fetchSocrataSearch(
-              CONFIG.ideam.dailyFlow,
-              hint
-            )
-          );
+
+      if (!rows.length) {
+
+        for (
+          const hint
+          of r.stationHints.slice(0, 2)
+        ) {
+
+          rows =
+            rows.concat(
+              await fetchSocrataSearch(
+                CONFIG.ideam.dailyFlow,
+                hint
+              )
+            );
         }
       }
 
-    }catch(err){
+    } catch (err) {
+
       console.warn(
         'IDEAM no disponible en esta sesión:',
         err
       );
     }
 
-    const parsed=rows
-      .map(row=>({
-        row,
-        date:rowDate(row),
-        text:rowStation(row),
-        flow:rowFlow(row)
-      }))
-      .filter(
-        x=>x.date && x.flow!==null
-      );
+
+    const parsed =
+      rows
+        .map(
+          row => ({
+            row,
+
+            date:
+              rowDate(row),
+
+            text:
+              rowStation(row),
+
+            flow:
+              rowFlow(row)
+          })
+        )
+        .filter(
+          x =>
+            x.date &&
+            x.flow !== null
+        );
+
 
     parsed.sort(
-      (a,b)=>b.date-a.date
+      (a, b) =>
+        b.date - a.date
     );
 
-    const latest=
+
+    const latest =
       parsed.find(
-        x=>r.stationHints.some(
-          h=>x.text.includes(h)
-        )
+        x =>
+          r.stationHints.some(
+            h =>
+              x.text.includes(h)
+          )
       )
       ||
       parsed[0];
 
-    if(latest){
-      result[key]={
-        flow:latest.flow,
-        date:latest.date.toISOString(),
-        source:'IDEAM'
+
+    if (latest) {
+
+      result[key] = {
+
+        flow:
+          latest.flow,
+
+        date:
+          latest.date.toISOString(),
+
+        source:
+          'IDEAM'
       };
     }
   }
 
+
   return result;
 }
 
-function classifyDelta(delta){
-  if(delta>8)
-    return {
-      label:'EN ASCENSO',
-      cls:'up'
-    };
 
-  if(delta<-8)
+
+/* =========================================================
+   CLASIFICACIÓN
+========================================================= */
+
+function classifyDelta(delta) {
+
+  if (delta > 8) {
+
     return {
-      label:'EN DESCENSO',
-      cls:'down'
+      label: 'EN ASCENSO',
+      cls: 'up'
     };
+  }
+
+
+  if (delta < -8) {
+
+    return {
+      label: 'EN DESCENSO',
+      cls: 'down'
+    };
+  }
+
 
   return {
-    label:'ESTABLE',
-    cls:'flat'
+    label: 'ESTABLE',
+    cls: 'flat'
   };
 }
 
-function buildRiverData(){
-  const rain24=
+
+
+/* =========================================================
+   CONSTRUIR INFORMACIÓN DE LOS RÍOS
+========================================================= */
+
+function buildRiverData() {
+
+  const rain24 =
     weatherState?.last24
     ??
-    CONFIG.demo.manzanares.rainfall24;
+    CONFIG
+      .demo
+      .manzanares
+      .rainfall24;
 
-  const rainNext=
+
+  const rainNext =
     weatherState?.future24
     ??
-    CONFIG.demo.manzanares.forecast24;
+    CONFIG
+      .demo
+      .manzanares
+      .forecast24;
 
-  const out={};
 
-  Object.entries(CONFIG.rivers).forEach(([key,r])=>{
-    const hyd=
-      liveHydro[key]
-      ||
-      CONFIG.demo[key];
+  const out = {};
 
-    const multiplier =
-      key==='guachaca'
-        ? 1.35
-        : key==='gaira'
-          ? .92
-          : 1;
 
-    const localRain24=
-      weatherState
-        ? rain24*multiplier
-        : hyd.rainfall24;
+  Object.entries(
+    CONFIG.rivers
+  ).forEach(
+    ([key, r]) => {
 
-    const next=
-      weatherState
-        ? rainNext*multiplier
-        : hyd.forecast24;
+      const hyd =
+        liveHydro[key]
+        ||
+        CONFIG.demo[key];
 
-    const delta=
-      hyd.delta
-      ??
-      (next-localRain24)*0.5;
 
-    const trend=
-      classifyDelta(delta);
+      const multiplier =
+        key === 'guachaca'
+          ? 1.35
+          : key === 'gaira'
+            ? 0.92
+            : 1;
 
-    out[key]={
-      ...r,
-      flow:hyd.flow,
-      delta,
-      rain24:localRain24,
-      forecast24:next,
-      trend,
-      source:hyd.source||'SIMULADO'
-    };
-  });
+
+      const localRain24 =
+        weatherState
+          ? rain24 * multiplier
+          : hyd.rainfall24;
+
+
+      const next =
+        weatherState
+          ? rainNext * multiplier
+          : hyd.forecast24;
+
+
+      const delta =
+        hyd.delta
+        ??
+        (
+          next -
+          localRain24
+        ) * 0.5;
+
+
+      out[key] = {
+
+        ...r,
+
+        flow:
+          hyd.flow,
+
+        delta:
+          hyd.delta_pct ??
+          delta,
+
+        rain24:
+          localRain24,
+
+        forecast24:
+          next,
+
+        trend:
+          classifyDelta(
+            hyd.delta_pct ??
+            delta
+          ),
+
+        source:
+          hyd.source ||
+          'SIMULADO',
+
+        responseMin:
+          hyd.responseMin ??
+          r.responseMin,
+
+        responseMax:
+          hyd.responseMax ??
+          r.responseMax,
+
+        calibrated:
+          Boolean(
+            hyd.calibrated
+          ),
+
+        calibrationNote:
+          hyd.calibrationNote ||
+          ''
+      };
+    }
+  );
+
 
   return out;
 }
 
-function updateUI(){
-  const rivers=buildRiverData();
 
-  const sorted=
-    Object.entries(rivers)
-      .sort(
-        (a,b)=>
-          Math.abs(b[1].delta)
-          -
-          Math.abs(a[1].delta)
-      );
 
-  const primary=
+/* =========================================================
+   ACTUALIZAR INTERFAZ
+========================================================= */
+
+function updateUI() {
+
+  const rivers =
+    buildRiverData();
+
+
+  const sorted =
+    Object.entries(
+      rivers
+    )
+    .sort(
+      (a, b) =>
+        Math.abs(b[1].delta)
+        -
+        Math.abs(a[1].delta)
+    );
+
+
+  const primary =
     sorted[0]?.[1]
     ||
     rivers.manzanares;
 
-  $('#kpiFlow').textContent=
-    fmt(primary.flow,1);
 
-  $('#kpiRiver').textContent=
+  $('#kpiFlow').textContent =
+    fmt(
+      primary.flow,
+      1
+    );
+
+
+  $('#kpiRiver').textContent =
     primary.name;
 
-  $('#kpiTrend').textContent=
+
+  $('#kpiTrend').textContent =
     primary.trend.label;
 
-  $('#kpiTrend').className=
+
+  $('#kpiTrend').className =
     `trend ${primary.trend.cls}`;
 
-  $('#kpiRain').textContent=
-    fmt(primary.rain24,1);
 
-  $('#kpiForecast').textContent=
-    fmt(primary.forecast24,1);
+  $('#kpiRain').textContent =
+    fmt(
+      primary.rain24,
+      1
+    );
 
-  $('#kpiRainSignal').textContent=
-    primary.forecast24>=25
+
+  $('#kpiForecast').textContent =
+    fmt(
+      primary.forecast24,
+      1
+    );
+
+
+  $('#kpiRainSignal').textContent =
+
+    primary.forecast24 >= 25
+
       ? 'Señal fuerte de lluvia'
-      : primary.forecast24>=8
+
+      : primary.forecast24 >= 8
+
         ? 'Lluvia probable'
+
         : 'Sin señal fuerte';
 
-  $('#kpiWindow').textContent=
+
+  $('#kpiWindow').textContent =
     `${primary.responseMin}–${primary.responseMax}`;
 
-  $('#kpiWindowRiver').textContent=
+
+  $('#kpiWindowRiver').textContent =
     primary.name;
 
-  const rising=
-    primary.forecast24>=8;
 
-  const title=
+
+  const rising =
+    primary.forecast24 >= 8;
+
+
+  const title =
     rising
       ? `Posible respuesta en ${primary.name}`
       : `Señal seca / estable en ${primary.name}`;
 
-  $('#signalTitle').textContent=
+
+  $('#signalTitle').textContent =
     title;
 
-  $('#signalCopy').textContent=
-    rising
-      ? `El pronóstico aporta ${fmt(primary.forecast24,1)} mm para las próximas 24 h. Bajo el modelo preliminar, la cuenca podría empezar a responder aproximadamente ${primary.responseMin}–${primary.responseMax} h después del evento de lluvia.`
-      : `La señal de precipitación prevista es baja. Si el periodo seco se mantiene, el caudal puede continuar descendiendo respecto a su referencia reciente.`;
 
-  $('#signalRing span').textContent=
-    primary.trend.label==='EN ASCENSO'
+  const calibrationText =
+    primary.calibrated
+
+      ? 'La ventana está calibrada con series históricas.'
+
+      : 'La ventana sigue siendo preliminar hasta completar la calibración histórica.';
+
+
+  $('#signalCopy').textContent =
+    rising
+
+      ? `El pronóstico aporta ${fmt(primary.forecast24,1)} mm para las próximas 24 h. Bajo el modelo actual, la cuenca podría empezar a responder aproximadamente ${primary.responseMin}–${primary.responseMax} h después del evento de lluvia. ${calibrationText}`
+
+      : `La señal de precipitación prevista es baja. Si el periodo seco se mantiene, el caudal puede continuar descendiendo respecto a su referencia reciente. ${calibrationText}`;
+
+
+  $('#signalRing span').textContent =
+
+    primary.trend.label === 'EN ASCENSO'
+
       ? '↑'
-      : primary.trend.label==='EN DESCENSO'
+
+      : primary.trend.label === 'EN DESCENSO'
+
         ? '↓'
+
         : '→';
 
-  $('#signalFill').style.width=
+
+  $('#signalFill').style.width =
     Math.min(
       95,
       Math.max(
         12,
-        primary.forecast24*2.1
+        primary.forecast24 * 2.1
       )
-    )+'%';
+    ) + '%';
 
-  $('#riverList').innerHTML=
-    Object.entries(rivers)
+
+
+  $('#riverList').innerHTML =
+
+    Object
+      .entries(rivers)
       .map(
-        ([key,r])=>`
-        <button
-          class="river-row"
-          data-river="${key}"
-          style="width:100%;text-align:left;border:0;background:transparent;color:inherit;cursor:pointer"
-        >
-          <i
-            class="river-dot"
-            style="background:${r.color};box-shadow:0 0 0 4px ${r.color}18"
-          ></i>
+        ([key, r]) => `
+          <button
+            class="river-row"
+            data-river="${key}"
+            style="
+              width:100%;
+              text-align:left;
+              border:0;
+              background:transparent;
+              color:inherit;
+              cursor:pointer
+            "
+          >
 
-          <span class="river-main">
-            <b>${r.name}</b>
-            <span>
-              ${r.source==='IDEAM'?'IDEAM':'Demo'}
-              · lluvia 24 h ${fmt(r.rain24,1)} mm
+            <i
+              class="river-dot"
+              style="
+                background:${r.color};
+                box-shadow:0 0 0 4px ${r.color}18
+              "
+            ></i>
+
+            <span class="river-main">
+
+              <b>
+                ${r.name}
+              </b>
+
+              <span>
+                ${
+                  r.source === 'IDEAM'
+                    ? 'IDEAM'
+                    : 'Demo'
+                }
+
+                · lluvia 24 h
+                ${fmt(r.rain24,1)}
+                mm
+              </span>
+
             </span>
-          </span>
 
-          <span class="river-state">
-            <strong>${fmt(r.flow,1)}</strong>
-            <span>${r.trend.label}</span>
-          </span>
-        </button>
+            <span class="river-state">
+
+              <strong>
+                ${fmt(r.flow,1)}
+              </strong>
+
+              <span>
+                ${r.trend.label}
+              </span>
+
+            </span>
+
+          </button>
         `
       )
       .join('');
 
-  document.querySelectorAll('.river-row')
+
+  document
+    .querySelectorAll('.river-row')
     .forEach(
-      b=>
+      b =>
         b.addEventListener(
           'click',
-          ()=>{
-            $('#riverSelect').value=
+          () => {
+
+            $('#riverSelect').value =
               b.dataset.river;
+
 
             updateChart(
               b.dataset.river
             );
 
+
             document
-              .getElementById('historico')
+              .getElementById(
+                'historico'
+              )
               .scrollIntoView({
-                behavior:'smooth'
+                behavior: 'smooth'
               });
           }
         )
     );
 
-  renderTimeline(primary);
+
+  renderTimeline(
+    primary
+  );
+
+
   renderForecast();
+
 
   updateChart(
     $('#riverSelect').value
   );
 
-  $('#updatedAt').textContent=
-    'Actualización: '
-    +
-    new Date().toLocaleTimeString(
-      'es-CO',
-      {
-        hour:'2-digit',
-        minute:'2-digit'
-      }
-    );
+
+  $('#updatedAt').textContent =
+    'Actualización: ' +
+    new Date()
+      .toLocaleTimeString(
+        'es-CO',
+        {
+          hour: '2-digit',
+          minute: '2-digit'
+        }
+      );
 }
 
-function renderTimeline(r){
-  const hours=[
-    0,3,6,9,12,15,18,21
-  ];
 
-  const base=
+
+/* =========================================================
+   LÍNEA DE TIEMPO
+========================================================= */
+
+function renderTimeline(r) {
+
+  const hours =
+    [0, 3, 6, 9, 12, 15, 18, 21];
+
+
+  const base =
     Math.max(
       0,
-      r.forecast24/8
+      r.forecast24 / 8
     );
 
-  $('#timeline').innerHTML=
+
+  $('#timeline').innerHTML =
+
     hours
       .map(
-        (h,i)=>{
-          const rain=
-            base*
+        (h, i) => {
+
+          const rain =
+            base *
             (
-              i===2
+              i === 2
                 ? 1.8
-                : i===3
+                : i === 3
                   ? 1.25
-                  : i>3
-                    ? .45
-                    : .2
+                  : i > 3
+                    ? 0.45
+                    : 0.2
             );
 
-          const height=
+
+          const height =
             Math.max(
               6,
               Math.min(
                 44,
-                rain*13
+                rain * 13
               )
             );
 
+
           return `
             <div class="timeline-item">
-              <div class="timeline-time">+${h}h</div>
+
+              <div class="timeline-time">
+                +${h}h
+              </div>
+
               <div
                 class="timeline-bar"
                 style="height:${height}px"
               ></div>
+
               <div class="timeline-rain">
                 ${fmt(rain,1)}
               </div>
+
               <div class="timeline-desc">
                 mm
               </div>
+
             </div>
           `;
         }
       )
       .join('');
 
-  const label=
-    r.forecast24>=8
+
+  const label =
+    r.forecast24 >= 8
+
       ? `Ventana estimada: lluvia → respuesta del río entre <strong>${r.responseMin} y ${r.responseMax} horas</strong>. La señal es orientativa y se calibrará con la serie histórica.`
+
       : `Ventana estimada: <strong>sin evento de lluvia significativo</strong>. Se vigilará la continuidad del descenso durante la temporada seca.`;
 
-  $('#responseNote').innerHTML=
+
+  $('#responseNote').innerHTML =
     label;
 }
 
-function renderForecast(){
-  const times=
-    weatherState?.times||[];
 
-  const precip=
-    weatherState?.precip||[];
 
-  const now=
+/* =========================================================
+   PRONÓSTICO
+========================================================= */
+
+function renderForecast() {
+
+  const times =
+    weatherState?.times || [];
+
+
+  const precip =
+    weatherState?.precip || [];
+
+
+  const now =
     Date.now();
 
-  const future=[];
 
-  times.forEach((t,i)=>{
-    const ms=
-      new Date(t).getTime();
+  const future = [];
 
-    if(
-      ms>now
-      &&
-      future.length<6
-    ){
-      future.push({
-        t,
-        mm:precip[i]||0
-      });
+
+  times.forEach(
+    (t, i) => {
+
+      const ms =
+        new Date(t)
+          .getTime();
+
+
+      if (
+        ms > now &&
+        future.length < 6
+      ) {
+
+        future.push({
+          t,
+          mm:
+            precip[i] || 0
+        });
+      }
     }
-  });
+  );
 
-  const vals=
+
+  const vals =
     future.length
-      ? future
-      : [0,4,7,2,0,1]
-        .map(
-          (mm,i)=>({
-            t:new Date(
-              Date.now()
-              +
-              i*3*3600e3
-            ).toISOString(),
-            mm
-          })
-        );
 
-  $('#forecastStrip').innerHTML=
+      ? future
+
+      : [0, 4, 7, 2, 0, 1]
+          .map(
+            (mm, i) => ({
+              t:
+                new Date(
+                  Date.now() +
+                  i * 3 * 3600e3
+                )
+                .toISOString(),
+
+              mm
+            })
+          );
+
+
+  $('#forecastStrip').innerHTML =
+
     vals
       .map(
-        x=>`
-        <div class="forecast-item">
-          <div class="forecast-time">
-            ${new Date(x.t)
-              .toLocaleTimeString(
-                'es-CO',
-                {
-                  hour:'2-digit',
-                  minute:'2-digit'
-                }
-              )}
-          </div>
+        x => `
+          <div class="forecast-item">
 
-          <div class="forecast-icon">
-            ${
-              x.mm>=4
-                ? '🌧️'
-                : x.mm>0
-                  ? '🌦️'
-                  : '☼'
-            }
-          </div>
+            <div class="forecast-time">
+              ${
+                new Date(x.t)
+                  .toLocaleTimeString(
+                    'es-CO',
+                    {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    }
+                  )
+              }
+            </div>
 
-          <div class="forecast-mm">
-            ${fmt(x.mm,1)} mm
+            <div class="forecast-icon">
+
+              ${
+                x.mm >= 4
+                  ? '🌧️'
+                  : x.mm > 0
+                    ? '🌦️'
+                    : '☼'
+              }
+
+            </div>
+
+            <div class="forecast-mm">
+              ${fmt(x.mm,1)} mm
+            </div>
+
           </div>
-        </div>
         `
       )
       .join('');
 
-  const total=
+
+  const total =
     weatherState?.future24
     ??
     buildRiverData()
       .manzanares
       .forecast24;
 
-  $('#forecast24').textContent=
+
+  $('#forecast24').textContent =
     fmt(total,1);
 
-  $('#weatherSource').textContent=
+
+  $('#weatherSource').textContent =
     weatherState
       ? 'Open-Meteo'
       : 'Demo · Open-Meteo';
 }
 
-function updateChart(riverKey){
-  const r=
+
+
+/* =========================================================
+   GRÁFICO HIDROLÓGICO
+========================================================= */
+
+function updateChart(riverKey) {
+
+  const r =
     buildRiverData()[riverKey]
     ||
-    buildRiverData().manzanares;
+    buildRiverData()
+      .manzanares;
 
-  const labels=[
+
+  const labels = [
+
     '−24h',
     '−21h',
     '−18h',
@@ -845,6 +1695,7 @@ function updateChart(riverKey){
     '−6h',
     '−3h',
     'Ahora',
+
     '+3h',
     '+6h',
     '+9h',
@@ -852,122 +1703,230 @@ function updateChart(riverKey){
     '+15h',
     '+18h',
     '+21h'
+
   ];
 
-  const center=
-    r.flow||7;
 
-  const flow=
+  const center =
+    r.flow || 7;
+
+
+  const flow =
     labels.map(
-      (_,i)=>
-        center*
-        (0.87+0.03*i)
+      (_, i) =>
+
+        center *
+        (0.87 + 0.03 * i)
+
         +
+
         (
-          r.delta>0
+          r.delta > 0
+
             ? Math.max(
                 0,
-                i-8
-              )*r.delta/25
+                i - 8
+              )
+              *
+              r.delta / 25
+
             : Math.min(
                 0,
-                i-8
-              )*Math.abs(
+                i - 8
+              )
+              *
+              Math.abs(
                 r.delta
-              )/35
+              ) /
+              35
         )
     );
 
-  const rain=
+
+  const rain =
     labels.map(
-      (_,i)=>
-        i<9
-          ? (r.rain24/18)*
+      (_, i) =>
+
+        i < 9
+
+          ?
+
+            (r.rain24 / 18)
+            *
             (
-              i%4===0
+              i % 4 === 0
                 ? 1.4
-                : .35
+                : 0.35
             )
-          : (r.forecast24/20)*
+
+          :
+
+            (r.forecast24 / 20)
+            *
             (
-              i%3===0
+              i % 3 === 0
                 ? 1.7
-                : .25
+                : 0.25
             )
     );
 
-  if(hydroChart)
-    hydroChart.destroy();
 
-  hydroChart=
+  if (
+    hydroChart
+  ) {
+
+    hydroChart.destroy();
+  }
+
+
+  hydroChart =
+
     new Chart(
       $('#hydroChart'),
       {
-        type:'line',
-        data:{
+
+        type: 'line',
+
+        data: {
+
           labels,
-          datasets:[
+
+          datasets: [
+
             {
-              label:'Caudal (m³/s)',
-              data:flow,
-              borderColor:'#4ed8ce',
-              backgroundColor:'rgba(78,216,206,.12)',
-              fill:true,
-              tension:.38,
-              yAxisID:'y',
-              pointRadius:0
+              label: 'Caudal (m³/s)',
+
+              data: flow,
+
+              borderColor:
+                '#4ed8ce',
+
+              backgroundColor:
+                'rgba(78,216,206,.12)',
+
+              fill: true,
+
+              tension: 0.38,
+
+              yAxisID: 'y',
+
+              pointRadius: 0
             },
+
+
             {
-              label:'Lluvia (mm)',
-              data:rain,
-              borderColor:'#f7c769',
-              borderDash:[5,5],
-              tension:.38,
-              yAxisID:'y1',
-              pointRadius:0
+              label: 'Lluvia (mm)',
+
+              data: rain,
+
+              borderColor:
+                '#f7c769',
+
+              borderDash:
+                [5, 5],
+
+              tension:
+                0.38,
+
+              yAxisID:
+                'y1',
+
+              pointRadius:
+                0
             }
+
           ]
         },
-        options:{
-          responsive:true,
-          maintainAspectRatio:false,
-          plugins:{
-            legend:{
-              labels:{
-                color:'#a9c0cb',
-                boxWidth:11,
-                font:{size:9}
+
+
+        options: {
+
+          responsive: true,
+
+          maintainAspectRatio: false,
+
+
+          plugins: {
+
+            legend: {
+
+              labels: {
+
+                color:
+                  '#a9c0cb',
+
+                boxWidth:
+                  11,
+
+                font: {
+                  size: 9
+                }
               }
             }
           },
-          scales:{
-            x:{
-              grid:{
-                color:'rgba(145,176,196,.07)'
+
+
+          scales: {
+
+            x: {
+
+              grid: {
+                color:
+                  'rgba(145,176,196,.07)'
               },
-              ticks:{
-                color:'#668294',
-                font:{size:8}
+
+              ticks: {
+
+                color:
+                  '#668294',
+
+                font: {
+                  size: 8
+                }
               }
             },
-            y:{
-              position:'left',
-              grid:{
-                color:'rgba(145,176,196,.07)'
+
+
+            y: {
+
+              position:
+                'left',
+
+              grid: {
+
+                color:
+                  'rgba(145,176,196,.07)'
               },
-              ticks:{
-                color:'#668294',
-                font:{size:8}
+
+              ticks: {
+
+                color:
+                  '#668294',
+
+                font: {
+                  size: 8
+                }
               }
             },
-            y1:{
-              position:'right',
-              grid:{
-                display:false
+
+
+            y1: {
+
+              position:
+                'right',
+
+              grid: {
+                display: false
               },
-              ticks:{
-                color:'#9a8356',
-                font:{size:8}
+
+              ticks: {
+
+                color:
+                  '#9a8356',
+
+                font: {
+                  size: 8
+                }
               }
             }
           }
@@ -976,13 +1935,27 @@ function updateChart(riverKey){
     );
 }
 
-function renderMethodology(){
-  const html=`
+
+
+/* =========================================================
+   METODOLOGÍA
+========================================================= */
+
+function renderMethodology() {
+
+  const html = `
+
     <section class="page-section active">
-      <div class="glass-card" style="padding:20px">
+
+      <div
+        class="glass-card"
+        style="padding:20px"
+      >
+
         <div class="eyebrow">
           METODOLOGÍA
         </div>
+
 
         <h1
           style="
@@ -993,6 +1966,7 @@ function renderMethodology(){
           Cómo vamos a predecir la respuesta del río
         </h1>
 
+
         <p
           style="
             color:#95afbc;
@@ -1001,121 +1975,242 @@ function renderMethodology(){
             font-size:11px
           "
         >
-          La V1 separa tres capas: observación
-          (caudal + lluvia), pronóstico meteorológico
-          y un modelo de respuesta cuenca–río.
-          Primero mostramos la señal; después
-          calibramos el tiempo de respuesta con la
-          historia de cada cuenca.
+          La V1 separa tres capas:
+          observación (caudal + lluvia),
+          pronóstico meteorológico
+          y un modelo de respuesta
+          cuenca–río.
+          Primero mostramos la señal;
+          después calibramos el tiempo
+          de respuesta con la historia
+          de cada cuenca.
         </p>
+
 
         <div
           class="grid2"
           style="margin-top:16px"
         >
-          <div class="side-card">
-            <h4>1 · Observación</h4>
-            <p>
-              Caudal horario/diario del IDEAM y
-              precipitación observada. Cada dato
-              conserva su origen.
-            </p>
-          </div>
 
           <div class="side-card">
-            <h4>2 · Pronóstico</h4>
+
+            <h4>
+              1 · Observación
+            </h4>
+
             <p>
-              Precipitación horaria futura para
-              Santa Marta y puntos de referencia
-              de las cuencas. La señal alimenta
-              la ventana esperada de respuesta.
+              Caudal horario/diario del IDEAM
+              y precipitación observada.
+              Cada dato conserva su origen.
             </p>
+
           </div>
 
-          <div class="side-card">
-            <h4>3 · Respuesta</h4>
-            <p>
-              Estimaremos el rezago lluvia→caudal
-              a partir de eventos históricos,
-              no con una constante arbitraria.
-            </p>
-          </div>
 
           <div class="side-card">
-            <h4>4 · Comunicación</h4>
+
+            <h4>
+              2 · Pronóstico
+            </h4>
+
             <p>
-              La página dirá “posible incremento”,
-              “estable” o “posible descenso”,
+              Precipitación horaria futura
+              para Santa Marta y puntos
+              de referencia de las cuencas.
+              La señal alimenta la ventana
+              esperada de respuesta.
+            </p>
+
+          </div>
+
+
+          <div class="side-card">
+
+            <h4>
+              3 · Respuesta
+            </h4>
+
+            <p>
+              Estimaremos el rezago
+              lluvia→caudal a partir
+              de eventos históricos,
+              no con una constante
+              arbitraria.
+            </p>
+
+          </div>
+
+
+          <div class="side-card">
+
+            <h4>
+              4 · Comunicación
+            </h4>
+
+            <p>
+              La página dirá
+              “posible incremento”,
+              “estable” o
+              “posible descenso”,
               con nivel de confianza,
               nunca como alerta oficial.
             </p>
+
           </div>
+
         </div>
+
       </div>
+
     </section>
+
   `;
 
-  $('#metodologia-page').innerHTML=
-    html;
-
-  document
-    .querySelectorAll('.page-section')
-    .forEach(
-      p=>p.classList.remove('active')
-    );
 
   $('#metodologia-page')
-    .classList.add('active');
+    .innerHTML =
+    html;
+
+
+  document
+    .querySelectorAll(
+      '.page-section'
+    )
+    .forEach(
+      p =>
+        p.classList.remove(
+          'active'
+        )
+    );
+
+
+  $('#metodologia-page')
+    .classList.add(
+      'active'
+    );
 }
 
-function demoMode(){
-  weatherState=null;
-  liveHydro={};
+
+
+/* =========================================================
+   MODO DEMO
+========================================================= */
+
+function demoMode() {
+
+  weatherState =
+    null;
+
+  liveHydro =
+    {};
 
   updateUI();
 
-  $('#weatherSource').textContent=
+
+  $('#weatherSource')
+    .textContent =
     'Modo demostración';
 
-  $('#updatedAt').textContent=
+
+  $('#updatedAt')
+    .textContent =
     'Actualización: demo';
+
 
   console.info(
     'Modo demostración activado.'
   );
 }
 
-async function refresh(){
-  $('#refreshBtn').textContent=
+
+
+/* =========================================================
+   ACTUALIZAR DATOS
+========================================================= */
+
+async function refresh() {
+
+  $('#refreshBtn')
+    .textContent =
     'Actualizando…';
 
-  try{
-    const weather=
+
+  try {
+
+    try {
+
+      await fetchLocalSnapshot();
+
+    } catch (e) {
+
+      console.info(
+        'Sin snapshot local; usando fuentes en vivo.',
+        e
+      );
+    }
+
+
+    try {
+
       await fetchWeather();
 
-    try{
-      liveHydro=
-        await fetchHydrology();
-    }catch(e){
-      liveHydro={};
+    } catch (e) {
+
+      console.info(
+        'Open-Meteo no disponible; manteniendo snapshot.',
+        e
+      );
     }
+
+
+    try {
+
+      const live =
+        await fetchHydrology();
+
+
+      if (
+        Object.keys(live)
+          .length
+      ) {
+
+        liveHydro = {
+          ...liveHydro,
+          ...live
+        };
+      }
+
+    } catch (e) {
+
+      console.info(
+        'IDEAM no disponible en el navegador; manteniendo snapshot.',
+        e
+      );
+    }
+
 
     updateUI();
 
-  }catch(err){
+
+  } catch (err) {
 
     console.warn(err);
-
-    weatherState=null;
 
     updateUI();
 
   } finally {
 
-    $('#refreshBtn').textContent=
+    $('#refreshBtn')
+      .textContent =
       '↻ Actualizar';
   }
 }
+
+
+
+/* =========================================================
+   EVENTOS
+========================================================= */
 
 $('#refreshBtn')
   .addEventListener(
@@ -1123,18 +2218,31 @@ $('#refreshBtn')
     refresh
   );
 
+
 $('#demoBtn')
   .addEventListener(
     'click',
     demoMode
   );
 
+
 $('#riverSelect')
   .addEventListener(
     'change',
-    e=>updateChart(e.target.value)
+    e =>
+      updateChart(
+        e.target.value
+      )
   );
 
+
+
+/* =========================================================
+   ARRANQUE
+========================================================= */
+
 initMap();
+
 updateUI();
+
 refresh();
