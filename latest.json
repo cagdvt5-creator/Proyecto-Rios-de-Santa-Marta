@@ -1,0 +1,65 @@
+{
+  "version": 2,
+  "generated_at": null,
+  "status": "DEMO",
+  "sources": {
+    "hydrology": "IDEAM / Datos Abiertos Colombia",
+    "weather": "Open-Meteo"
+  },
+  "hydrology": {
+    "manzanares": {
+      "name": "Río Manzanares",
+      "flow": 8.7,
+      "delta_pct": 8.4,
+      "date": null,
+      "source": "SIMULADO",
+      "station": "15017060",
+      "responseMin": 3,
+      "responseMax": 6,
+      "calibrated": false,
+      "calibrationNote": "Valor de demostración hasta disponer de series históricas procesadas."
+    },
+    "gaira": {
+      "name": "Río Gaira",
+      "flow": 5.4,
+      "delta_pct": -2.3,
+      "date": null,
+      "source": "SIMULADO",
+      "station": "15017030",
+      "responseMin": 4,
+      "responseMax": 8,
+      "calibrated": false,
+      "calibrationNote": "Valor de demostración hasta disponer de series históricas procesadas."
+    },
+    "guachaca": {
+      "name": "Río Guachaca",
+      "flow": 11.2,
+      "delta_pct": 15.8,
+      "date": null,
+      "source": "SIMULADO",
+      "station": "15017040",
+      "responseMin": 3,
+      "responseMax": 7,
+      "calibrated": false,
+      "calibrationNote": "Valor de demostración hasta disponer de series históricas procesadas."
+    }
+  },
+  "rainfall": {
+    "santa_marta": {
+      "last24_mm": 19.4,
+      "source": "SIMULADO"
+    },
+    "minca": {
+      "last24_mm": 23.2,
+      "source": "SIMULADO"
+    },
+    "guachaca": {
+      "last24_mm": 28.6,
+      "source": "SIMULADO"
+    }
+  },
+  "forecast": {
+    "next24_mm": 22.8,
+    "source": "SIMULADO"
+  }
+}
