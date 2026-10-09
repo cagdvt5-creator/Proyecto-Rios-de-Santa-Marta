@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#081826">
+  <meta name="description" content="Monitor hidrológico visual para Santa Marta: caudal, lluvia, pronóstico y respuesta esperada de los ríos.">
+  <title>Pulso Hídrico · Santa Marta</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app" class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><span class="wave wave-a"></span><span class="wave wave-b"></span><span class="wave wave-c"></span></div>
+      <div><div class="brand-kicker">MONITOR HIDROLÓGICO</div><div class="brand-name">PULSO HÍDRICO</div><div class="brand-place">Santa Marta · Magdalena</div></div>
+    </div>
+    <nav class="side-nav" aria-label="Navegación principal">
+      <button class="side-link active" data-target="inicio"><span class="side-icon">⌁</span><span>Visión general</span></button>
+      <button class="side-link" data-target="mapa"><span class="side-icon">◎</span><span>Mapa de ríos</span></button>
+      <button class="side-link" data-target="pronostico"><span class="side-icon">☁</span><span>Pronóstico</span></button>
+      <button class="side-link" data-target="historico"><span class="side-icon">↗</span><span>Histórico</span></button>
+      <button class="side-link" data-target="metodologia"><span class="side-icon">⊙</span><span>Metodología</span></button>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="status-line"><span class="status-dot"></span><span>Monitoreo preparado</span></div>
+      <div class="tiny-note">Datos reales y modelos preliminares se distinguen visualmente.</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="crumb"><span>Santa Marta</span><b>/</b><strong>Panorama hídrico</strong></div>
+      <div class="top-actions">
+        <div class="live-pill"><span></span> SISTEMA ACTIVO</div>
+        <button class="top-btn" id="refreshBtn">↻ Actualizar</button>
+        <button class="top-btn accent" id="demoBtn">Cargar demo</button>
+      </div>
+    </header>
+
+    <section id="inicio" class="page-section active">
+      <div class="hero">
+        <div class="hero-copy">
+          <div class="eyebrow">EL PULSO DE LA SIERRA HACIA EL CARIBE</div>
+          <h1>¿Qué está pasando<br><em>con nuestros ríos?</em></h1>
+          <p>Un tablero visual para entender el caudal del día anterior, la lluvia que lo precede y cuándo podría reaccionar cada cuenca.</p>
+          <div class="hero-meta"><span class="hero-chip">● Santa Marta</span><span class="hero-chip">IDEAM + pronóstico meteorológico</span><span class="hero-chip">Modelo de respuesta preliminar</span></div>
+        </div>
+        <div class="hero-sky" aria-hidden="true"><div class="sun"></div><div class="mountain m1"></div><div class="mountain m2"></div><div class="river-glow"></div></div>
+      </div>
+
+      <div class="kpi-grid" id="kpiGrid">
+        <article class="kpi-card kpi-blue"><div class="kpi-label">CAUDAL MÁS RECIENTE</div><div class="kpi-value" id="kpiFlow">—</div><div class="kpi-unit">m³/s · última observación</div><div class="kpi-foot"><span class="trend up" id="kpiTrend">—</span><span id="kpiRiver">Sin dato</span></div></article>
+        <article class="kpi-card kpi-cyan"><div class="kpi-label">LLUVIA · ÚLTIMAS 24 H</div><div class="kpi-value" id="kpiRain">—</div><div class="kpi-unit">mm · señal meteorológica</div><div class="kpi-foot"><span class="neutral-dot"></span><span>Santa Marta + cuenca</span></div></article>
+        <article class="kpi-card kpi-gold"><div class="kpi-label">LLUVIA · PRÓXIMAS 24 H</div><div class="kpi-value" id="kpiForecast">—</div><div class="kpi-unit">mm · pronóstico</div><div class="kpi-foot"><span class="rain-icon">☔</span><span id="kpiRainSignal">Sin señal fuerte</span></div></article>
+        <article class="kpi-card kpi-purple"><div class="kpi-label">VENTANA DE RESPUESTA</div><div class="kpi-value" id="kpiWindow">—</div><div class="kpi-unit">horas · modelo preliminar</div><div class="kpi-foot"><span class="model-tag">MODELO</span><span id="kpiWindowRiver">por río</span></div></article>
+      </div>
+
+      <div class="grid-main">
+        <section class="glass-card map-card" id="mapa">
+          <div class="card-head">
+            <div><div class="section-label">GEOGRAFÍA</div><h2>La red hídrica de Santa Marta</h2><p>Ríos, estaciones y señales de respuesta.</p></div>
+            <div class="map-actions"><button class="ghost-btn" id="focusSM">Centrar Santa Marta</button><button class="ghost-btn" id="toggleRainLayer">Lluvia</button></div>
+          </div>
+          <div class="map-wrap"><div id="map"></div><div class="map-overlay"><div class="map-badge"><span class="map-live-dot"></span> CAPAS ACTIVAS</div><div class="map-legend"><div><i class="legend river"></i>Río</div><div><i class="legend flow"></i>Estación</div><div><i class="legend rain"></i>Lluvia</div></div></div></div>
+        </section>
+
+        <aside class="right-stack">
+          <section class="glass-card now-card">
+            <div class="card-head compact"><div><div class="section-label">SEÑAL HIDROLÓGICA</div><h2 id="signalTitle">Esperando datos…</h2></div><div class="signal-ring" id="signalRing"><span>—</span></div></div>
+            <p class="signal-copy" id="signalCopy">Cuando entren lluvia + caudal, aquí veremos si el sistema apunta a subida, estabilidad o descenso.</p>
+            <div class="signal-track"><div class="track-fill" id="signalFill"></div></div>
+            <div class="signal-legend"><span>Seco</span><span>Transición</span><span>Respuesta</span></div>
+          </section>
+
+          <section class="glass-card river-list-card">
+            <div class="card-head compact"><div><div class="section-label">RÍOS MONITOREADOS</div><h2>Estado de la cuenca</h2></div><span class="soft-badge">V1</span></div>
+            <div id="riverList" class="river-list"></div>
+          </section>
+        </aside>
+      </div>
+
+      <div class="grid-bottom">
+        <section class="glass-card timeline-card" id="pronostico">
+          <div class="card-head"><div><div class="section-label">LLUVIA → CAUDAL</div><h2>Cuándo debería crecer el río</h2><p>La página transforma una lluvia pronosticada en una ventana de respuesta aproximada.</p></div><span class="model-badge">MODELO PRELIMINAR</span></div>
+          <div class="timeline" id="timeline"></div>
+          <div class="response-note" id="responseNote">Cargando señal meteorológica…</div>
+        </section>
+
+        <section class="glass-card forecast-card">
+          <div class="card-head compact"><div><div class="section-label">PRÓXIMAS HORAS</div><h2>Pronóstico de lluvia</h2></div><span id="weatherSource" class="source-badge">Open‑Meteo</span></div>
+          <div class="forecast-strip" id="forecastStrip"></div>
+          <div class="forecast-total"><span>Total próximas 24 h</span><strong id="forecast24">—</strong><small>mm</small></div>
+        </section>
+      </div>
+
+      <section class="glass-card chart-card" id="historico">
+        <div class="card-head"><div><div class="section-label">COMPORTAMIENTO</div><h2>Caudal vs. lluvia</h2><p>En la versión conectada, esta gráfica usará las series horarias/diarias del IDEAM y la precipitación observada.</p></div><select id="riverSelect"><option value="manzanares">Río Manzanares</option><option value="gaira">Río Gaira</option><option value="guachaca">Río Guachaca</option></select></div>
+        <div class="chart-area"><canvas id="hydroChart"></canvas></div>
+      </section>
+
+      <footer class="site-footer">
+        <div><strong>PULSO HÍDRICO</strong><span>· Santa Marta</span></div>
+        <div class="footer-sources"><span>IDEAM</span><span>Open‑Meteo</span><span>Leaflet / OpenStreetMap</span></div>
+        <div id="updatedAt">Actualización: —</div>
+      </footer>
+    </section>
+
+    <section id="pronostico-page" class="page-section"></section>
+    <section id="historico-page" class="page-section"></section>
+    <section id="metodologia-page" class="page-section"></section>
+  </main>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
